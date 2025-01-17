@@ -1,5 +1,5 @@
 const SHEET_ID = "1hyNU5JzUzeUS82Nm-KFZlipLLhfPPaLXb31V45uqeNY";
-const API_KEY = "AIzaSyD2A2pd2ASiz0Vu-uGlmW6PpbwG35yGH70";
+const API_KEY = "AIzaSyCY1zguDICkwCuaL801TCMTagMhCF0gF5o";
 const RANGE = "Sheet1"; // Assuming the sheet name is "Sheet1". Update if different.
 
 const fetchSheetData = async () => {
