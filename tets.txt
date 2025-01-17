@@ -1,0 +1,111 @@
+const SHEET_ID = "1Jsnm5VwR4J2EVueWVtsyYjTfE1azQWvQjT4Ig-1-x_M";
+const API_KEY = "AIzaSyBwnJTt3tZV61gebywzYb8MIDk4CTcleHQ";
+const RANGE = "Sheet1"; // Assuming the sheet name is "Sheet1". Update if different.
+
+const fetchSheetData = async () => {
+    try {
+        const response = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`
+        );
+        const data = await response.json();
+        return data.values;
+    } catch (error) {
+        console.error("Error fetching data from Google Sheets:", error);
+        return [];
+    }
+};
+
+const renderExpenses = async () => {
+    const container = document.getElementById("expense-container");
+    const sheetData = await fetchSheetData();
+
+    if (!sheetData || sheetData.length < 2) {
+        container.innerHTML = "<p>No data found.</p>";
+        return;
+    }
+
+    // Extract headers and rows
+    const [headers, ...rows] = sheetData;
+
+    // Process data into months and totals
+    const expenseData = {};
+
+    rows.forEach(row => {
+        const [timestamp, spentOn, amount, reason] = row;
+
+        if (!timestamp || !spentOn || !amount || isNaN(parseFloat(amount))) {
+            console.warn("Skipping invalid row:", row);
+            return; // Skip invalid rows
+        }
+
+        // Parse the timestamp (handle MM/DD/YYYY HH:mm:ss format)
+        const [date, time] = timestamp.split(" ");
+        const [month, day, year] = date.split("/").map(Number);
+
+        if (!year || !month || !day) {
+            console.warn("Invalid date format in timestamp:", timestamp);
+            return;
+        }
+
+        const monthKey = `${year}-${month.toString().padStart(2, "0")}`;
+        const entryDate = new Date(`${year}-${month}-${day}T${time}`);
+
+        if (!expenseData[monthKey]) {
+            expenseData[monthKey] = { total: 0, entries: [] };
+        }
+
+        expenseData[monthKey].total += parseFloat(amount) || 0;
+        expenseData[monthKey].entries.push({
+            timestamp: entryDate, // Store as Date object for proper sorting
+            spentOn,
+            amount,
+            reason,
+        });
+    });
+
+    // Sort months in descending order
+    const sortedMonths = Object.keys(expenseData).sort((a, b) => b.localeCompare(a));
+
+    // Render data
+    sortedMonths.forEach(month => {
+        const monthData = expenseData[month];
+        const monthBox = document.createElement("div");
+        monthBox.className = "month-box";
+
+        const monthHeader = document.createElement("h2");
+        monthHeader.textContent = `${month} - Total: ₹${monthData.total.toFixed(2)}`;
+        monthBox.appendChild(monthHeader);
+
+        const table = document.createElement("table");
+        table.className = "expense-table";
+
+        // Create table headers
+        const tableHeader = `
+            <tr>
+                <th>Timestamp</th>
+                <th>Spent On</th>
+                <th>Amount</th>
+                <th>Reason</th>
+            </tr>`;
+        table.innerHTML = tableHeader;
+
+        // Sort entries by timestamp (newest first) and add rows
+        monthData.entries
+            .sort((a, b) => b.timestamp - a.timestamp) // Sort by Date object
+            .forEach(entry => {
+                const row = `
+                    <tr>
+                        <td>${entry.timestamp.toLocaleString()}</td>
+                        <td>${entry.spentOn}</td>
+                        <td>₹${entry.amount}</td>
+                        <td>${entry.reason}</td>
+                    </tr>`;
+                table.innerHTML += row;
+            });
+
+        monthBox.appendChild(table);
+        container.appendChild(monthBox);
+    });
+};
+
+renderExpenses();
