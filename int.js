@@ -30,17 +30,17 @@ const renderSummary = async () => {
     const expenseData = {};
     const yearlyTotal = {};
 
-    rows.forEach(row => {
+    rows.forEach((row, index) => {
         const [timestamp, spentOn, amount, reason] = row;
 
-        // Only process rows where reason is "interest"
-        if (reason && reason.trim() !== "interest") {
+        // Filter rows where reason is "interest" (case-sensitive exact match)
+        if (!reason || reason.trim() !== "interest") {
             return;
         }
 
         if (!timestamp || !spentOn || !amount) {
-            console.warn("Skipping invalid row:", row);
-            return; // Skip invalid rows
+            console.warn(`Skipping invalid row at index ${index}:`, row);
+            return;
         }
 
         // Parse the timestamp (handle MM/DD/YYYY HH:mm:ss format)
@@ -55,6 +55,12 @@ const renderSummary = async () => {
         const monthKey = `${year}-${month.toString().padStart(2, "0")}`;
         const entryDate = new Date(`${year}-${month}-${day}T${time}`);
 
+        const parsedAmount = parseFloat(amount);
+        if (isNaN(parsedAmount)) {
+            console.warn(`Skipping row with invalid amount at index ${index}:`, row);
+            return;
+        }
+
         // Calculate total per month
         if (!expenseData[year]) {
             expenseData[year] = {};
@@ -63,17 +69,20 @@ const renderSummary = async () => {
         if (!expenseData[year][monthKey]) {
             expenseData[year][monthKey] = 0;
         }
-        expenseData[year][monthKey] += parseFloat(amount) || 0;
+        expenseData[year][monthKey] += parsedAmount;
 
         // Calculate total per year
         if (!yearlyTotal[year]) {
             yearlyTotal[year] = 0;
         }
-        yearlyTotal[year] += parseFloat(amount) || 0;
+        yearlyTotal[year] += parsedAmount;
     });
 
     // Sort years in descending order to display the latest years first
     const sortedYears = Object.keys(expenseData).sort((a, b) => b - a);
+
+    // Clear container before rendering
+    container.innerHTML = "";
 
     // Create the content for each year
     sortedYears.forEach(year => {
@@ -84,7 +93,7 @@ const renderSummary = async () => {
         yearBox.className = "year-box";
 
         const yearHeader = document.createElement("h2");
-        yearHeader.textContent = `Total Spend in ${year} (interest) - ₹${yearlyTotal[year].toFixed(2)}`;
+        yearHeader.textContent = `Total  ${year} (interest) - ₹${yearlyTotal[year].toFixed(2)}`;
         yearBox.appendChild(yearHeader);
 
         // Create a table for the months in the current year
@@ -100,20 +109,22 @@ const renderSummary = async () => {
         table.innerHTML = tableHeader;
 
         // Insert month-wise data
-        Object.keys(yearData).sort().forEach(monthKey => {
-            const totalAmount = yearData[monthKey];
-            const [year, monthNumber] = monthKey.split("-");
+        Object.keys(yearData)
+            .sort()
+            .forEach(monthKey => {
+                const totalAmount = yearData[monthKey];
+                const [year, monthNumber] = monthKey.split("-");
 
-            // Convert month number to month name
-            const monthName = new Date(`${year}-${monthNumber}-01`).toLocaleString("default", { month: "long" });
+                // Convert month number to month name
+                const monthName = new Date(`${year}-${monthNumber}-01`).toLocaleString("default", { month: "long" });
 
-            const row = `
-                <tr>
-                    <td>${monthName} ${year}</td>
-                    <td>₹${totalAmount.toFixed(2)}</td>
-                </tr>`;
-            table.innerHTML += row;
-        });
+                const row = `
+                    <tr>
+                        <td>${monthName} ${year}</td>
+                        <td>₹${totalAmount.toFixed(2)}</td>
+                    </tr>`;
+                table.innerHTML += row;
+            });
 
         yearBox.appendChild(table);
         container.appendChild(yearBox);

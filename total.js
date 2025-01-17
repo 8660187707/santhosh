@@ -18,13 +18,13 @@ const renderSummary = async () => {
     const container = document.getElementById("expense-container");
     const sheetData = await fetchSheetData();
 
-    if (!sheetData || sheetData.length < 2) {
+    if (!sheetData || sheetData.length === 0) {
         container.innerHTML = "<p>No data found.</p>";
         return;
     }
 
-    // Extract headers and rows
-    const [headers, ...rows] = sheetData;
+    // Use the entire data set directly since there are no headers
+    const rows = sheetData;
 
     // Process data into months and years
     const expenseData = {};
@@ -48,7 +48,6 @@ const renderSummary = async () => {
         }
 
         const monthKey = `${year}-${month.toString().padStart(2, "0")}`;
-        const entryDate = new Date(`${year}-${month}-${day}T${time}`);
 
         // Calculate total per month
         if (!expenseData[year]) {
@@ -79,7 +78,7 @@ const renderSummary = async () => {
         yearBox.className = "year-box";
 
         const yearHeader = document.createElement("h2");
-        yearHeader.textContent = `Total Spend in ${year} -  ₹${yearlyTotal[year].toFixed(2)}`;
+        yearHeader.textContent = `Total Spend in ${year} - ₹${yearlyTotal[year].toFixed(2)}`;
         yearBox.appendChild(yearHeader);
 
         // Create a table for the months in the current year
@@ -116,4 +115,3 @@ const renderSummary = async () => {
 };
 
 renderSummary();
- 
